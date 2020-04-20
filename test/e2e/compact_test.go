@@ -504,11 +504,11 @@ func TestCompactWithStoreGateway(t *testing.T) {
 		// NOTE: We cannot assert on intermediate `thanos_blocks_meta_` metrics as those are gauge and change dynamically due to many
 		// compaction groups. Wait for at least first compaction iteration (next is in 5m).
 		testutil.Ok(t, c.WaitSumMetrics(e2e.Greater(0), "thanos_compactor_iterations_total"))
-		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(0), "thanos_compactor_blocks_cleaned_total"))                            // This should be 1 [BUG no 1]. TODO: fix.
+		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(1), "thanos_compactor_blocks_cleaned_total"))
 		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(2*4+2+2*3+1), "thanos_compactor_blocks_marked_for_deletion_total"))      // 17.
 		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(2), "thanos_compactor_aborted_partial_uploads_deletion_attempts_total")) // We should have 1.
 		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(5), "thanos_compact_group_compactions_total"))
-		// TODO(bwplotka): This is confusing, should be either normal compaction or vertical not both (?)
+		// TODO(bwplotka): This is confusing, should be either normal compaction or vertical not both (https://github.com/thanos-io/thanos/issues/2469).
 		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(3), "thanos_compact_group_vertical_compactions_total"))
 		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(0), "thanos_compact_group_compactions_failures_total"))
 		testutil.Ok(t, c.WaitSumMetrics(e2e.Equals(12), "thanos_compact_group_compaction_runs_started_total"))
@@ -519,7 +519,8 @@ func TestCompactWithStoreGateway(t *testing.T) {
 
 		testutil.Ok(t, str.WaitSumMetrics(e2e.Equals(float64(
 			len(rawBlockIDs)+7+
-				5, // 5 compactions, 5 newly added blocks.
+				5+ // 5 compactions, 5 newly added blocks.
+				-1, // Partial block removed.
 		)), "thanos_blocks_meta_synced"))
 		testutil.Ok(t, str.WaitSumMetrics(e2e.Equals(0), "thanos_blocks_meta_sync_failures_total"))
 
